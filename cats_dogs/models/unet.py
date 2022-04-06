@@ -24,12 +24,18 @@ class Unet:
             X(arr):
                 The output of the convolution block
         """
-        X = inp
-        for i in range(2):
-            X = Conv2D(filters=num_filters,
-                    kernel_size=kernel_size,
-                    padding="same", activation="relu")(X)
-            X = BatchNormalization()(X)
+        X = Conv2D(filters=num_filters,
+                kernel_size=kernel_size,
+                padding="same")(inp)
+        X = BatchNormalization()(X)
+        X = Activation("relu")(X)
+
+        X = Conv2D(filters=num_filters,
+                kernel_size=kernel_size,
+                padding="same")(X)
+        X = BatchNormalization()(X)
+        X = Activation("relu")(X)
+        # X = Dropout(0.5)(X)
         return X
 
     def downsample_block(self, inp, num_filters, kernel_size=3, dropout=0.1):
@@ -48,8 +54,7 @@ class Unet:
                 Outputs of convolution and pooling layers
         """
         c = self.conv_block(inp, num_filters, kernel_size)
-        p = MaxPool2D((2, 2), strides=2)(c)
-        p = Dropout(dropout)(p)
+        p = MaxPool2D((2, 2))(c)
         return c, p
 
     def upsample_block(self, inp, concat_feature, num_filters,
@@ -78,7 +83,7 @@ class Unet:
         X = Conv2DTranspose(num_filters, kernel_size,
                             strides, padding="same")(inp)
         X = Concatenate()([X, concat_feature])
-        # X = Dropout(dropout)(X)
+        # X = Dropout(0.5)(X)
         X = self.conv_block(X, num_filters, kernel_size=3)
         return X
 
@@ -134,7 +139,7 @@ class Unet:
                                  dropout, strides)
 
         # Output Layer
-        output = Conv2D(num_classes, kernel_size=3, padding="same")(u9)
+        output = Conv2D(num_classes, kernel_size=3, padding="same", activation="softmax")(u9)
 
         self.model = Model(input, output, name="U-net")
         return self.model

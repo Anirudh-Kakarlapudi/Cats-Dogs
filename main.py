@@ -27,7 +27,7 @@ def segmentation_train(loss="categorical_crossentropy", metric="accuracy"):
     shape = (128, 128, 3)
     num_classes = 3
     learning_rate = 1e-03
-    b_size = 8
+    b_size = 16
     epochs = 50
     dropout = 0.3
     kernel_size = 3
