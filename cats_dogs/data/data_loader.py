@@ -24,8 +24,8 @@ class DataLoader:
             The directory path of masks
     """
     def __init__(self, width=256, height=256,
-                 image_path="./images/",
-                 mask_path="./annotations/trimaps/"):
+                 image_path="cats_dogs/data/images/",
+                 mask_path="cats_dogs/data/annotations/trimaps/"):
         self.height = height
         self.width = width
         self.image_path = image_path
@@ -50,8 +50,8 @@ class DataLoader:
         img = img.astype(np.float32)
         return img
 
-    def train_test_cv_files(self, train_path="./annotations/trainval.txt",
-                            test_path="./annotations/test.txt", cval=True):
+    def train_test_cv_files(self, train_path="cats_dogs/data/annotations/trainval.txt",
+                            test_path="cats_dogs/data/annotations/test.txt", cval=True):
         """ Reads the train, test file names and returns train, test and cv
         file names
 
@@ -113,8 +113,8 @@ class SegmentationDataLoader(DataLoader):
         msk = msk.astype(np.int32)
         return msk
 
-    def train_test_cv_files(self, train_path="./annotations/trainval.txt",
-                            test_path="./annotations/test.txt", cval=True):
+    def train_test_cv_files(self, train_path="cats_dogs/data/annotations/trainval.txt",
+                            test_path="cats_dogs/data/annotations/test.txt", cval=True):
         """ Reads the train, test file names and returns train, test and cv
         file names
 
@@ -158,7 +158,7 @@ class SegmentationDataLoader(DataLoader):
         return [(train_imgs, train_msks), (test_imgs, test_msks)]
 
     def segmentation_data(self, img_names, msk_names,
-                          batch_size=8, num_map_threads=1):
+                          batch_size=8, num_map_threads=1, n_repeat=10, shuffle=True):
         """ Creates a tensor dataset based on the batchsize
 
         Args:
@@ -175,11 +175,12 @@ class SegmentationDataLoader(DataLoader):
             data(tensor)
         """
         data = tf.data.Dataset.from_tensor_slices((img_names, msk_names))
-        data = data.shuffle(buffer_size=5000)
+        if shuffle:
+            data = data.shuffle(buffer_size=5000)
         data = data.map(self.read_wrapper,
                         num_parallel_calls=num_map_threads)
         data = data.batch(batch_size)
-        data = data.repeat(10)
+        data = data.repeat(n_repeat)
         data = data.prefetch(batch_size)
         return data
 
@@ -215,8 +216,8 @@ class SegmentationDataLoader(DataLoader):
 
 
 class ClassificationDataLoader(DataLoader):
-    def train_test_cv_files(self, train_path="./annotations/trainval.txt",
-                            test_path="./annotations/test.txt", cval=True):
+    def train_test_cv_files(self, train_path="cats_dogs/data/annotations/trainval.txt",
+                            test_path="cats_dogs/data/annotations/test.txt", cval=True):
         """ Reads the train, test file names and returns train, test and cv
         file names
 
@@ -261,8 +262,8 @@ class ClassificationDataLoader(DataLoader):
         test_df = load_files(test_path, False)
         return train_df, test_df, cv_df
 
-    def classification_data(self, train_path="./annotations/trainval.txt",
-                            test_path="./annotations/test.txt",
+    def classification_data(self, train_path="cats_dogs/data/annotations/trainval.txt",
+                            test_path="cats_dogs/data/annotations/test.txt",
                             cval=True, classid=False):
         """ Reads the data from the saved files if present or creates the data
         from the directory
@@ -332,6 +333,6 @@ class ClassificationDataLoader(DataLoader):
 #     print(x)
 #     ans = input()
 
-cdl = ClassificationDataLoader()
-train_df, test_df,cv_df = cdl.classification_data()
-data = cdl.classification_data(train_df)
+# cdl = ClassificationDataLoader()
+# train_df, test_df,cv_df = cdl.classification_data()
+# data = cdl.classification_data(train_df)
