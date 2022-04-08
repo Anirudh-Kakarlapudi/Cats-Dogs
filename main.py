@@ -25,17 +25,20 @@ print("Test images: ", len(test_images))
 
 # Parameters
 image_shape = (256, 256, 3)
-n_filters = 8
-batch_size = 8
+n_filters = 16
+batch_size = 16
 n_classes = 3
 epochs = 40
-loss = jaccard_loss
+loss = "categorical_crossentropy"
 learning_rate = 1e-03
 optimizer = optimizers.Adam(learning_rate)
-callback = [callbacks.ModelCheckpoint("oxford_segmentation_jaccard.h5",
-                                      save_best_only=True),
-            callbacks.ReduceLROnPlateau(min_lr=1e-05),
-            callbacks.EarlyStopping(monitor='val_loss')]
+callback = [callbacks.ModelCheckpoint("oxford_segmentation_crossentropy.h5",
+                                      verbose=1, save_best_model=True),
+            callbacks.ReduceLROnPlateau(monitor="val_loss", patience=3,
+                                        factor=0.1, min_lr=1e-06,
+                                        verbose=1),
+            callbacks.EarlyStopping(monitor='val_loss', patience=5, verbose=1)]
+
 
 model = construct_model(image_shape, n_classes, n_filters)
 train_gen = DataGenerator(batch_size, image_shape, train_images, train_masks)
