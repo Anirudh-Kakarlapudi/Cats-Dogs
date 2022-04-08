@@ -46,18 +46,18 @@ class DataGenerator(keras.utils.Sequence, Image):
                 A batch of images and masks
         """
         # The Input tensor should be of dim (batch_size, width, height, 3)
-        batch_images = np.zeros((self.batch_size, * self.img_shape),
+        batch_images = np.zeros((self.batch_size, *self.img_shape),
                                 dtype=np.float32)
 
-        # The Output tensor should be of dim (batch_size, width, height, 1)
-        batch_masks = np.zeros((self.batch_size, * self.img_shape[:-1], 1),
+        # The Output tensor should be of dim (batch_size, width, height, 3)
+        batch_masks = np.zeros((self.batch_size, *self.img_shape),
                                dtype=np.int32)
         for i, _ in enumerate(images):
             batch_images[i] = self.read_image(images[i],
                                               output_shape=self.img_shape[:-1])
             msk = self.read_mask(masks[i], output_shape=self.img_shape[:-1])
             # increase the dimesions of msk
-            batch_masks[i] = np.expand_dims(msk, 2)
+            batch_masks[i] = msk #np.expand_dims(msk, 2)
         return batch_images, batch_masks
 
     def apply_filter(self, filter_name="gaussian",

@@ -9,7 +9,7 @@ import os
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import pickle
+import tensorflow as tf
 
 
 class Image:
@@ -41,6 +41,10 @@ class Image:
             mask = cv2.resize(mask, output_shape)
         if normalize:
             mask = mask - 1
+            # Encode each label into 3d space (one hot encoding)
+            mask =tf.squeeze(tf.one_hot(mask, depth=3,
+                              dtype=np.int32)).numpy()
+
         mask = mask.astype(np.int32)
         return mask
 
