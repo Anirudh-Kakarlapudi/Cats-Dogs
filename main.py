@@ -1,11 +1,8 @@
-from gc import callbacks
-import os
-import cv2
 from cats_dogs.data.data_loader import DataGenerator
 from sklearn.model_selection import train_test_split
 from cats_dogs.models.unet import construct_model
+from cats_dogs.utils.metrics import jaccard_loss, f1_loss, f1_score
 from tensorflow.keras import callbacks
-from tensorflow.keras.metrics import MeanIoU
 from tensorflow.keras import optimizers
 
 image_dir = "cats_dogs/data/images/"
@@ -28,24 +25,23 @@ print("Test images: ", len(test_images))
 
 # Parameters
 image_shape = (256, 256, 3)
-n_filters = 32
-batch_size = 32
+n_filters = 8
+batch_size = 8
 n_classes = 3
 epochs = 40
-loss = "sparse_categorical_crossentropy"
+loss = jaccard_loss
 learning_rate = 1e-03
-optimizer = optimizers.RMSprop(learning_rate)
-callback = [callbacks.ModelCheckpoint("oxford_segmentation.h5",
-            save_best_only=True), callbacks.EarlyStopping(monitor='val_loss'),
-            callbacks.ReduceLROnPlateau(min_lr=1e-05)]
-
+optimizer = optimizers.Adam(learning_rate)
+callback = [callbacks.ModelCheckpoint("oxford_segmentation_jaccard.h5",
+                                      save_best_only=True),
+            callbacks.ReduceLROnPlateau(min_lr=1e-05),
+            callbacks.EarlyStopping(monitor='val_loss')]
 
 model = construct_model(image_shape, n_classes, n_filters)
 train_gen = DataGenerator(batch_size, image_shape, train_images, train_masks)
 valid_gen = DataGenerator(batch_size, image_shape, cv_images, cv_masks)
 model.compile(optimizer=optimizer, loss=loss,
-              metrics=["accuracy"])
+              metrics=["accuracy", f1_score])
 
 model.fit(train_gen, epochs=epochs, validation_data=valid_gen,
           callbacks=callback)
-
