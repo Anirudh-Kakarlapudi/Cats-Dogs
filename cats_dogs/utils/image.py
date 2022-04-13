@@ -39,13 +39,36 @@ class Image:
         mask = cv2.imread(mask, cv2.IMREAD_GRAYSCALE)
         if output_shape is not None:
             mask = cv2.resize(mask, output_shape)
+
         if normalize:
             mask = mask - 1
             # Encode each label into 3d space (one hot encoding)
-            mask =tf.squeeze(tf.one_hot(mask, depth=3,
+            mask = tf.squeeze(tf.one_hot(mask, depth=3,
                               dtype=np.int32)).numpy()
 
         mask = mask.astype(np.int32)
+        return mask
+
+    def reconstruct_mask(self, mask, output_shape=None):
+        """ Reconstructs the predicted mask with each pixel as a vector
+
+        Args:
+            mask(arr):
+                one hot encoded array of mask
+            output_shape(tuple):
+                the shape of the output mask to get resized
+
+        Returns:
+            mask(arr):
+                Reconstructed mask
+        """
+        mask = np.squeeze(mask)
+        mask = np.argmax(mask, axis=-1)
+        mask = mask.astype(np.uint8)
+        if output_shape is not None:
+            mask = cv2.resize(mask, output_shape,
+                              interpolation=cv2.INTER_LINEAR)
+        mask = np.expand_dims(mask, axis=-1)
         return mask
 
     def read_image(self, img, output_shape=None,
@@ -145,43 +168,43 @@ class Image:
             true_size(bool):
                 Change the predictions to original size
         """
-
         num = 2 if pred_dir is None else 3
         directory = mask_dir if pred_dir is None else pred_dir
         names = [x for x in os.listdir(directory) if x.endswith(".png")]
         names = np.random.choice(names, n_imgs)
         names = [x.split("/")[-1][:-4] for x in names]
 
-        _, axis = plt.subplots(n_imgs, num)
+        fig, axis = plt.subplots(n_imgs, num)
+        fig.set_figheight(15)
+        fig.set_figwidth(15)
 
         for i, elem in enumerate(names):
-
             image = self.read_image(imgs_dir + elem + ".jpg")
-            mask = self.read_mask(mask_dir + elem + ".png")
-
+            mask = self.read_mask(mask_dir + elem + ".png", normalize=False)
             axis[i][0].imshow(image)
             axis[i][1].imshow(mask)
 
-            axis[i][0].set_title(label="Image",
-                                 fontdict={"fontsize": 10})
-            axis[i][1].set_title(label="Mask",
-                                 fontdict={"fontsize": 10})
+            # axis[i][0].set_title(label="Image",
+            #                      fontdict={"fontsize": 10})
+            # axis[i][1].set_title(label="Mask",
+            #                      fontdict={"fontsize": 10})
             if pred_dir is not None:
                 shape = image.shape[:-1][::-1] if true_size else None
-                pred = self.read_mask(mask=(pred_dir + elem + ".jpg"),
-                                      output_shape=shape, normalize=True)
+                pred = self.read_mask(mask=(pred_dir + elem + ".png"),
+                                      output_shape=shape, normalize=False)
 
                 axis[i][2].imshow(pred)
-                axis[i][2].set_title(label="Prediction",
-                                     fontdict={"fontsize": 10})
-
+                # axis[i][2].set_title(label="Prediction",
+                #                      fontdict={"fontsize": 10})
             plt.setp(axis[i, 0], ylabel=elem)
         # Set fontsize the ticks from the plots
         for j in range(n_imgs):
             for k in range(num):
-                for label in (axis[j][k].get_xticklabels() +
-                              axis[j][k].get_yticklabels()):
-                    label.set_fontsize(7)
+                axis[j][k].set_xticks([])
+                axis[j][k].set_yticks([])
+                #for label in (axis[j][k].get_xticklabels() +
+                #              axis[j][k].get_yticklabels()):
+                #    label.set_fontsize(7)
         if save_fig:
             plt.savefig("Prediction.jpg")
         plt.show()
@@ -335,28 +358,25 @@ class Image:
                 The list of correct image_paths and corresponding mask paths
         """
         correct_image_paths, correct_mask_paths = [], []
-        if (pre_cleaned and os.path.exists(imgs_save_dir) and 
-            os.path.exists(mask_save_dir)):
-            with open(imgs_save_dir, "r") as f:
-                correct_image_paths = f.read().splitlines()
-            with open(mask_save_dir, "r") as f:
-                correct_mask_paths = f.read().splitlines()
-        else:   
+        if (pre_cleaned and os.path.exists(imgs_save_dir) and
+                os.path.exists(mask_save_dir)):
+            with open(imgs_save_dir, "r") as file:
+                correct_image_paths = file.read().splitlines()
+            with open(mask_save_dir, "r") as file:
+                correct_mask_paths = file.read().splitlines()
+        else:
             # check 1: if mask does not exist
             # check 2: both mask and images are in correct format
-            # print(images, masks)
-
             for img in os.listdir(image_dir):
                 not_corrupt = False
                 if os.path.exists(mask_dir + img[:-4] + ".png"):
                     if ((cv2.imread(mask_dir + img[:-4] + ".png") is not None)
-                        and
-                        (cv2.imread(image_dir + img) is not None)):
+                            and (cv2.imread(image_dir + img) is not None)):
                         not_corrupt = True
                 if not_corrupt:
                     correct_image_paths.append(image_dir + img)
                     correct_mask_paths.append(mask_dir + img[:-4] + ".png")
-        
+
         # save the correct paths in file to save computation time
         with open(imgs_save_dir, "w") as file:
             file.write("\n".join(correct_image_paths))
@@ -364,3 +384,31 @@ class Image:
             file.write("\n".join(correct_mask_paths))
 
         return correct_image_paths, correct_mask_paths
+
+    def save_image_mask_pred(self, images, preds, masks=None,
+                             name="fig",
+                             save_path="./"):
+        """ Saves the images and masks at the given path
+
+        Args:
+            images(list):
+                List of images
+            masks(list):
+                List of masks
+            preds(list):
+                List of preds
+            save_path(str):
+                The path where the images and masks are to be stored
+        """
+        if not os.path.exists(save_path + "images/"):
+            os.makedirs(save_path + "images/")
+        if not os.path.exists(save_path + "masks/"):
+            os.makedirs(save_path + "masks/")
+        if not os.path.exists(save_path + "preds/"):
+            os.makedirs(save_path + "preds/")
+
+        for i, _ in enumerate(images):
+            cv2.imwrite(save_path + "images/" + name + ".jpg", images[i])
+            cv2.imwrite(save_path + "preds/" + name + ".png", preds[i])
+            if masks is not None:
+                cv2.imwrite(save_path + "masks/" + name + ".png", masks[i])

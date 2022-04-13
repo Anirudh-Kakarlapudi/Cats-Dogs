@@ -57,7 +57,7 @@ class DataGenerator(keras.utils.Sequence, Image):
                                               output_shape=self.img_shape[:-1])
             msk = self.read_mask(masks[i], output_shape=self.img_shape[:-1])
             # increase the dimesions of msk
-            batch_masks[i] = msk #np.expand_dims(msk, 2)
+            batch_masks[i] = msk  # np.expand_dims(msk, 2)
         return batch_images, batch_masks
 
     def apply_filter(self, filter_name="gaussian",
